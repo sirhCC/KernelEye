@@ -5,6 +5,7 @@
 
 #include "../include/driver.h"
 #include "../include/communication.h"
+#include "../include/memory_scanner.h"
 
 //
 // HandleIoctlRequest - Main IOCTL dispatcher
@@ -75,6 +76,14 @@ NTSTATUS HandleIoctlRequest(
             );
             break;
 
+        case IOCTL_KERNELEYE_CHECK_MEMORY:
+            status = HandleCheckMemory(
+                inputBuffer, inputBufferLength,
+                outputBuffer, outputBufferLength,
+                &bytesReturned
+            );
+            break;
+
         case IOCTL_KERNELEYE_START_PROTECTION:
         case IOCTL_KERNELEYE_STOP_PROTECTION:
         case IOCTL_KERNELEYE_SCAN_PROCESS:
@@ -83,7 +92,6 @@ NTSTATUS HandleIoctlRequest(
         case IOCTL_KERNELEYE_GET_DETECTIONS:
         case IOCTL_KERNELEYE_ENUMERATE_DRIVERS:
         case IOCTL_KERNELEYE_ENUMERATE_MODULES:
-        case IOCTL_KERNELEYE_CHECK_MEMORY:
         case IOCTL_KERNELEYE_CHECK_HOOKS:
         case IOCTL_KERNELEYE_VERIFY_DRIVER:
             KE_WARNING("IOCTL 0x%08X not yet implemented", ioControlCode);
@@ -309,6 +317,86 @@ NTSTATUS HandleHeartbeat(
 
     *BytesReturned = 0;
 
+    return STATUS_SUCCESS;
+}
+
+//
+// HandleCheckMemory - Check memory integrity of a process
+//
+NTSTATUS HandleCheckMemory(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+)
+{
+    NTSTATUS status;
+    PKERNELEYE_SCAN_REQUEST request;
+    PMEMORY_SCAN_CONTEXT scanContext = NULL;
+    PKERNELEYE_SCAN_RESULT result;
+    UINT32 totalRegions = 0;
+    UINT32 suspiciousRegions = 0;
+    UINT32 detectionCount = 0;
+
+    KE_INFO("HandleCheckMemory called");
+
+    if (InputBufferLength < sizeof(KERNELEYE_SCAN_REQUEST)) {
+        KE_ERROR("Input buffer too small for scan request");
+        *BytesReturned = 0;
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    if (OutputBufferLength < sizeof(KERNELEYE_SCAN_RESULT)) {
+        KE_ERROR("Output buffer too small for scan result");
+        *BytesReturned = 0;
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    request = (PKERNELEYE_SCAN_REQUEST)InputBuffer;
+    result = (PKERNELEYE_SCAN_RESULT)OutputBuffer;
+
+    KE_INFO("Scanning memory for PID=%llu, Flags=0x%08X",
+        request->ProcessId, request->ScanFlags);
+
+    // Perform memory scan
+    status = ScanProcessMemory(
+        request->ProcessId,
+        request->ScanFlags & SCAN_FLAG_MEMORY,
+        &scanContext
+    );
+
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Memory scan failed: 0x%08X", status);
+        result->Status = status;
+        result->Context = request->Context;
+        result->DetectionCount = 0;
+        result->ScanDuration = 0;
+        result->TotalChecks = 0;
+        result->ResultDataSize = 0;
+        *BytesReturned = sizeof(KERNELEYE_SCAN_RESULT);
+        return STATUS_SUCCESS; // Return success but with error in result
+    }
+
+    // Get statistics
+    GetMemoryScanStatistics(scanContext, &totalRegions, &suspiciousRegions, &detectionCount);
+
+    // Fill result
+    RtlZeroMemory(result, sizeof(KERNELEYE_SCAN_RESULT));
+    result->Context = request->Context;
+    result->Status = KERNELEYE_STATUS_SUCCESS;
+    result->DetectionCount = detectionCount;
+    result->ScanDuration = 0; // TODO: Track actual duration
+    result->TotalChecks = totalRegions;
+    result->ResultDataSize = 0; // TODO: Serialize detections
+
+    KE_INFO("Memory scan complete: %u regions, %u suspicious, %u detections",
+        totalRegions, suspiciousRegions, detectionCount);
+
+    // Cleanup
+    FreeMemoryScanContext(scanContext);
+
+    *BytesReturned = sizeof(KERNELEYE_SCAN_RESULT);
     return STATUS_SUCCESS;
 }
 
