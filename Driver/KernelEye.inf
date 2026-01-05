@@ -1,0 +1,70 @@
+;
+; KernelEye.inf - Installation Information File
+; Copyright (c) 2026 KernelEye Project
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider=%ManufacturerName%
+CatalogFile=KernelEye.cat
+DriverVer=01/04/2026,1.0.0.1
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+KernelEye_Device_CoInstaller_CopyFiles = 11
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+KernelEye.sys = 1,,
+
+; ================= Class section =====================
+
+[ClassInstall32]
+Addreg=SystemClassReg
+
+[SystemClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+; ========== Manufacturer/Models sections ===========
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+%KernelEye.DeviceDesc%=KernelEye_Device, Root\KernelEye
+
+; ========== Installation sections ==================
+
+[KernelEye_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+KernelEye.sys
+
+; ========== Service installation ===================
+
+[KernelEye_Device.NT.Services]
+AddService = KernelEye,%SPSVCINST_ASSOCSERVICE%, KernelEye_Service_Inst
+
+[KernelEye_Service_Inst]
+DisplayName    = %KernelEye.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\KernelEye.sys
+
+; ========== Strings ================================
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="KernelEye Project"
+ClassName="System"
+DiskName="KernelEye Driver Installation Disk"
+KernelEye.DeviceDesc = "KernelEye Anti-Cheat Driver"
+KernelEye.SVCDESC = "KernelEye Anti-Cheat Service"
