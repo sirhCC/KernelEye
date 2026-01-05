@@ -5,6 +5,10 @@
 
 #include "../include/driver.h"
 #include "../include/memory_scanner.h"
+#include "../include/hook_detector.h"
+#include "../include/process_monitor.h"
+#include "../include/driver_verifier.h"
+#include "../include/secure_comm.h"
 
 // Global variables
 PDEVICE_OBJECT g_DeviceObject = NULL;
@@ -230,10 +234,35 @@ NTSTATUS InitializeDriver(
         return status;
     }
 
-    // TODO: Initialize process monitor
-    // TODO: Initialize driver verifier
-    // TODO: Initialize hook detector
-    // TODO: Register callbacks
+    // Initialize hook detector
+    status = HookDetectorInitialize();
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Failed to initialize hook detector: 0x%08X", status);
+        MemoryScannerCleanup();
+        return status;
+    }
+
+    status = ProcessMonitorInitialize();
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Failed to initialize process monitor: 0x%08X", status);
+        HookDetectorCleanup();
+        MemoryScannerCleanup();
+        return status;
+    }
+
+    status = DriverVerifierInitialize();
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Failed to initialize driver verifier: 0x%08X", status);
+        ProcessMonitorCleanup();
+        HookDetectorCleanup();
+        MemoryScannerCleanup();
+        return status;
+    }
+
+    status = SecureCommInitialize();
+    if (!NT_SUCCESS(status)) {
+        KE_WARNING("Failed to initialize secure communication: 0x%08X (continuing anyway)", status);
+    }
 
     deviceExtension->IsInitialized = TRUE;
     RtlZeroMemory(&deviceExtension->Statistics, sizeof(KERNELEYE_STATISTICS));
@@ -250,14 +279,11 @@ VOID CleanupDriver(VOID)
 {
     KE_INFO("Cleaning up driver resources...");
 
-    // TODO: Unregister callbacks
-    
-    // Cleanup memory scanner
+    SecureCommCleanup();
+    DriverVerifierCleanup();
+    ProcessMonitorCleanup();
+    HookDetectorCleanup();
     MemoryScannerCleanup();
-    
-    // TODO: Cleanup process monitor
-    // TODO: Cleanup driver verifier
-    // TODO: Cleanup hook detector
 
     KE_INFO("Driver resources cleaned up");
 }
