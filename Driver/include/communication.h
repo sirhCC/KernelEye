@@ -56,6 +56,14 @@ NTSTATUS HandleHeartbeat(
     _Out_ PULONG BytesReturned
 );
 
+NTSTATUS HandleCheckMemory(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+);
+
 // Validation functions
 BOOLEAN ValidateMessageHeader(
     _In_ PKERNELEYE_MESSAGE_HEADER Header,
