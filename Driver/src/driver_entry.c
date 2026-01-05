@@ -4,6 +4,7 @@
 //
 
 #include "../include/driver.h"
+#include "../include/memory_scanner.h"
 
 // Global variables
 PDEVICE_OBJECT g_DeviceObject = NULL;
@@ -222,7 +223,13 @@ NTSTATUS InitializeDriver(
 
     KE_INFO("Initializing driver subsystems...");
 
-    // TODO: Initialize memory scanner
+    // Initialize memory scanner
+    status = MemoryScannerInitialize();
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Failed to initialize memory scanner: 0x%08X", status);
+        return status;
+    }
+
     // TODO: Initialize process monitor
     // TODO: Initialize driver verifier
     // TODO: Initialize hook detector
@@ -244,7 +251,10 @@ VOID CleanupDriver(VOID)
     KE_INFO("Cleaning up driver resources...");
 
     // TODO: Unregister callbacks
-    // TODO: Cleanup memory scanner
+    
+    // Cleanup memory scanner
+    MemoryScannerCleanup();
+    
     // TODO: Cleanup process monitor
     // TODO: Cleanup driver verifier
     // TODO: Cleanup hook detector
