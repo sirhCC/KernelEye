@@ -10,6 +10,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KernelEyeService", "Service\KernelEyeService.vcxproj", "{A7C8B9D5-4E3F-4A2B-9C1D-5E7F8A9B2C3D}"
 EndProject
 
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MemoryScanTest", "Tests\MemoryScanTest.vcxproj", "{B8D4C9E6-5F7A-4B3C-8D2E-6F9A7B8C3D4E}"
+EndProject
+
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -24,6 +27,10 @@ Global
 		{A7C8B9D5-4E3F-4A2B-9C1D-5E7F8A9B2C3D}.Debug|x64.Build.0 = Debug|x64
 		{A7C8B9D5-4E3F-4A2B-9C1D-5E7F8A9B2C3D}.Release|x64.ActiveCfg = Release|x64
 		{A7C8B9D5-4E3F-4A2B-9C1D-5E7F8A9B2C3D}.Release|x64.Build.0 = Release|x64
+		{B8D4C9E6-5F7A-4B3C-8D2E-6F9A7B8C3D4E}.Debug|x64.ActiveCfg = Debug|x64
+		{B8D4C9E6-5F7A-4B3C-8D2E-6F9A7B8C3D4E}.Debug|x64.Build.0 = Debug|x64
+		{B8D4C9E6-5F7A-4B3C-8D2E-6F9A7B8C3D4E}.Release|x64.ActiveCfg = Release|x64
+		{B8D4C9E6-5F7A-4B3C-8D2E-6F9A7B8C3D4E}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
