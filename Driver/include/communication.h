@@ -64,6 +64,30 @@ NTSTATUS HandleCheckMemory(
     _Out_ PULONG BytesReturned
 );
 
+NTSTATUS HandleCheckHooks(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+);
+
+NTSTATUS HandleStartProtection(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+);
+
+NTSTATUS HandleStopProtection(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+);
+
 // Validation functions
 BOOLEAN ValidateMessageHeader(
     _In_ PKERNELEYE_MESSAGE_HEADER Header,
