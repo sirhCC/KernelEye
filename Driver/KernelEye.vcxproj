@@ -100,11 +100,13 @@
   <ItemGroup>
     <ClCompile Include="src\driver_entry.c" />
     <ClCompile Include="src\communication.c" />
+    <ClCompile Include="src\memory_scanner.c" />
   </ItemGroup>
   
   <ItemGroup>
     <ClInclude Include="include\driver.h" />
     <ClInclude Include="include\communication.h" />
+    <ClInclude Include="include\memory_scanner.h" />
     <ClInclude Include="..\Common\constants.h" />
     <ClInclude Include="..\Common\structures.h" />
     <ClInclude Include="..\Common\protocol.h" />
