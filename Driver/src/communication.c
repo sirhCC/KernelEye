@@ -6,6 +6,8 @@
 #include "../include/driver.h"
 #include "../include/communication.h"
 #include "../include/memory_scanner.h"
+#include "../include/hook_detector.h"
+#include "../include/process_monitor.h"
 
 //
 // HandleIoctlRequest - Main IOCTL dispatcher
@@ -84,8 +86,30 @@ NTSTATUS HandleIoctlRequest(
             );
             break;
 
+        case IOCTL_KERNELEYE_CHECK_HOOKS:
+            status = HandleCheckHooks(
+                inputBuffer, inputBufferLength,
+                outputBuffer, outputBufferLength,
+                &bytesReturned
+            );
+            break;
+
         case IOCTL_KERNELEYE_START_PROTECTION:
+            status = HandleStartProtection(
+                inputBuffer, inputBufferLength,
+                outputBuffer, outputBufferLength,
+                &bytesReturned
+            );
+            break;
+
         case IOCTL_KERNELEYE_STOP_PROTECTION:
+            status = HandleStopProtection(
+                inputBuffer, inputBufferLength,
+                outputBuffer, outputBufferLength,
+                &bytesReturned
+            );
+            break;
+
         case IOCTL_KERNELEYE_SCAN_PROCESS:
         case IOCTL_KERNELEYE_SET_CONFIG:
         case IOCTL_KERNELEYE_GET_CONFIG:
@@ -401,6 +425,81 @@ NTSTATUS HandleCheckMemory(
 }
 
 //
+// HandleCheckHooks - Check for hooks in a process
+//
+NTSTATUS HandleCheckHooks(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+)
+{
+    NTSTATUS status;
+    PKERNELEYE_SCAN_REQUEST request;
+    PHOOK_SCAN_CONTEXT scanContext = NULL;
+    PKERNELEYE_SCAN_RESULT result;
+    UINT32 functionsChecked = 0;
+    UINT32 hooksFound = 0;
+
+    KE_INFO("HandleCheckHooks called");
+
+    if (InputBufferLength < sizeof(KERNELEYE_SCAN_REQUEST)) {
+        KE_ERROR("Input buffer too small for scan request");
+        *BytesReturned = 0;
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    if (OutputBufferLength < sizeof(KERNELEYE_SCAN_RESULT)) {
+        KE_ERROR("Output buffer too small for scan result");
+        *BytesReturned = 0;
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    request = (PKERNELEYE_SCAN_REQUEST)InputBuffer;
+    result = (PKERNELEYE_SCAN_RESULT)OutputBuffer;
+
+    KE_INFO("Scanning hooks for PID=%llu, Flags=0x%08X",
+        request->ProcessId, request->ScanFlags);
+
+    status = ScanProcessHooks(
+        request->ProcessId,
+        request->ScanFlags & SCAN_FLAG_HOOKS,
+        &scanContext
+    );
+
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Hook scan failed: 0x%08X", status);
+        result->Status = status;
+        result->Context = request->Context;
+        result->DetectionCount = 0;
+        result->ScanDuration = 0;
+        result->TotalChecks = 0;
+        result->ResultDataSize = 0;
+        *BytesReturned = sizeof(KERNELEYE_SCAN_RESULT);
+        return STATUS_SUCCESS;
+    }
+
+    GetHookScanStatistics(scanContext, &functionsChecked, &hooksFound);
+
+    RtlZeroMemory(result, sizeof(KERNELEYE_SCAN_RESULT));
+    result->Context = request->Context;
+    result->Status = KERNELEYE_STATUS_SUCCESS;
+    result->DetectionCount = hooksFound;
+    result->ScanDuration = 0;
+    result->TotalChecks = functionsChecked;
+    result->ResultDataSize = 0;
+
+    KE_INFO("Hook scan complete: %u functions checked, %u hooks found",
+        functionsChecked, hooksFound);
+
+    FreeHookScanContext(scanContext);
+
+    *BytesReturned = sizeof(KERNELEYE_SCAN_RESULT);
+    return STATUS_SUCCESS;
+}
+
+//
 // ValidateMessageHeader - Validate message header integrity
 //
 BOOLEAN ValidateMessageHeader(
@@ -500,3 +599,78 @@ NTSTATUS BuildResponse(
 
     return STATUS_SUCCESS;
 }
+
+//
+// HandleStartProtection - Start protecting a process
+//
+NTSTATUS HandleStartProtection(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+)
+{
+    NTSTATUS status;
+    UINT64 processId;
+    UINT32 protectionFlags;
+
+    UNREFERENCED_PARAMETER(OutputBuffer);
+    UNREFERENCED_PARAMETER(OutputBufferLength);
+
+    if (InputBufferLength < sizeof(UINT64) + sizeof(UINT32)) {
+        KE_ERROR("Invalid input buffer size for START_PROTECTION");
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    processId = *((UINT64*)InputBuffer);
+    protectionFlags = *((UINT32*)((BYTE*)InputBuffer + sizeof(UINT64)));
+
+    KE_INFO("Starting protection for PID=%llu with flags=0x%08X", processId, protectionFlags);
+
+    status = ProtectProcess(processId, protectionFlags);
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Failed to protect process: 0x%08X", status);
+        return status;
+    }
+
+    *BytesReturned = 0;
+    return STATUS_SUCCESS;
+}
+
+//
+// HandleStopProtection - Stop protecting a process
+//
+NTSTATUS HandleStopProtection(
+    _In_ PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_ PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength,
+    _Out_ PULONG BytesReturned
+)
+{
+    NTSTATUS status;
+    UINT64 processId;
+
+    UNREFERENCED_PARAMETER(OutputBuffer);
+    UNREFERENCED_PARAMETER(OutputBufferLength);
+
+    if (InputBufferLength < sizeof(UINT64)) {
+        KE_ERROR("Invalid input buffer size for STOP_PROTECTION");
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    processId = *((UINT64*)InputBuffer);
+
+    KE_INFO("Stopping protection for PID=%llu", processId);
+
+    status = UnprotectProcess(processId);
+    if (!NT_SUCCESS(status)) {
+        KE_ERROR("Failed to unprotect process: 0x%08X", status);
+        return status;
+    }
+
+    *BytesReturned = 0;
+    return STATUS_SUCCESS;
+}
+
