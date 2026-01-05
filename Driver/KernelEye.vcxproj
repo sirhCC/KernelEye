@@ -101,12 +101,20 @@
     <ClCompile Include="src\driver_entry.c" />
     <ClCompile Include="src\communication.c" />
     <ClCompile Include="src\memory_scanner.c" />
+    <ClCompile Include="src\hook_detector.c" />
+    <ClCompile Include="src\process_monitor.c" />
+    <ClCompile Include="src\driver_verifier.c" />
+    <ClCompile Include="src\secure_comm.c" />
   </ItemGroup>
   
   <ItemGroup>
     <ClInclude Include="include\driver.h" />
     <ClInclude Include="include\communication.h" />
     <ClInclude Include="include\memory_scanner.h" />
+    <ClInclude Include="include\hook_detector.h" />
+    <ClInclude Include="include\process_monitor.h" />
+    <ClInclude Include="include\driver_verifier.h" />
+    <ClInclude Include="include\secure_comm.h" />
     <ClInclude Include="..\Common\constants.h" />
     <ClInclude Include="..\Common\structures.h" />
     <ClInclude Include="..\Common\protocol.h" />
